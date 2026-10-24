@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "DraftMate AI Legal Studio"
+description = "A legal drafting workspace for advocates, law students, and researchers to review contracts, understand risk, compare references, and prepare traceable revised drafts."
+version = "1.0.0"
+id = "artifacts/draftmate-studio"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 24673
+
+[services.development]
+run = "pnpm --filter @workspace/draftmate-studio run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/draftmate-studio", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/draftmate-studio/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "24673"
+BASE_PATH = "/"
