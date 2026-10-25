@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: draftmate
+    description: DraftMate legal drafting and contract review
 paths:
   /healthz:
     get:
@@ -24,6 +26,66 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /draftmate/generate:
+    post:
+      operationId: generateDraftmateDraft
+      tags: [draftmate]
+      summary: Generate a working legal draft
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DraftmateGenerationInput"
+      responses:
+        "200":
+          description: Generated working draft
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DraftmateGeneration"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: AI provider is not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /draftmate/review:
+    post:
+      operationId: reviewDraftmateContract
+      tags: [draftmate]
+      summary: Analyze a contract and prepare a traceable working revision
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DraftmateReviewInput"
+      responses:
+        "200":
+          description: Contract analysis, revision, and provided-source match report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DraftmateReviewResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: AI provider is not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +95,153 @@ components:
           type: string
       required:
         - status
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+    DraftmateGenerationInput:
+      type: object
+      properties:
+        skill:
+          type: string
+          enum:
+            - agreement-drafting
+            - legal-notice
+            - contract-review
+            - petition-outline
+            - legal-research
+            - document-summary
+        instruction:
+          type: string
+          minLength: 1
+          maxLength: 8000
+        referenceText:
+          type: string
+          maxLength: 18000
+        styleText:
+          type: string
+          maxLength: 8000
+      required: [skill, instruction]
+    DraftmateGeneration:
+      type: object
+      properties:
+        title:
+          type: string
+        draft:
+          type: string
+        caveats:
+          type: array
+          items:
+            type: string
+      required: [title, draft, caveats]
+    DraftmateReviewInput:
+      type: object
+      properties:
+        contractText:
+          type: string
+          minLength: 20
+          maxLength: 100000
+        instruction:
+          type: string
+          maxLength: 8000
+        jurisdiction:
+          type: string
+          maxLength: 300
+        referenceAgreementText:
+          type: string
+          maxLength: 40000
+        supportingMaterials:
+          type: array
+          maxItems: 8
+          items:
+            $ref: "#/components/schemas/DraftmateSupportingMaterial"
+      required: [contractText]
+    DraftmateSupportingMaterial:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        text:
+          type: string
+          minLength: 1
+          maxLength: 20000
+      required: [name, text]
+    DraftmateReviewResult:
+      type: object
+      properties:
+        title:
+          type: string
+        overview:
+          type: string
+        findings:
+          type: array
+          items:
+            $ref: "#/components/schemas/DraftmateFinding"
+        revisedDraft:
+          type: string
+        changes:
+          type: array
+          items:
+            $ref: "#/components/schemas/DraftmateRevisionChange"
+        citationChecks:
+          type: array
+          items:
+            $ref: "#/components/schemas/DraftmateCitationCheck"
+        assumptions:
+          type: array
+          items:
+            type: string
+      required: [title, overview, findings, revisedDraft, changes, citationChecks, assumptions]
+    DraftmateFinding:
+      type: object
+      properties:
+        id:
+          type: string
+        clause:
+          type: string
+        severity:
+          type: string
+          enum: [high, medium, low]
+        excerpt:
+          type: string
+        observation:
+          type: string
+        concern:
+          type: string
+        missingInformation:
+          type: string
+        suggestedChange:
+          type: string
+      required: [id, clause, severity, excerpt, observation, concern, missingInformation, suggestedChange]
+    DraftmateRevisionChange:
+      type: object
+      properties:
+        clause:
+          type: string
+        before:
+          type: string
+        after:
+          type: string
+        reason:
+          type: string
+        relatedFindingId:
+          type: ["string", "null"]
+      required: [clause, before, after, reason, relatedFindingId]
+    DraftmateCitationCheck:
+      type: object
+      properties:
+        citation:
+          type: string
+        status:
+          type: string
+          enum: [matched_in_provided_material, not_found_in_provided_material, not_checked]
+        sourceName:
+          type: ["string", "null"]
+        matchedExcerpt:
+          type: ["string", "null"]
+      required: [citation, status, sourceName, matchedExcerpt]
 
